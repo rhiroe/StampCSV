@@ -20,8 +20,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-tags: true
 
       - name: Resolve tag
         id: resolve
@@ -36,8 +34,12 @@ jobs:
             fi
             echo "tag=v${NORMALIZED}" >> "$GITHUB_OUTPUT"
           else
-            # 入力なしの場合: 最新タグのパッチバージョンをインクリメント
-            LATEST=$(git tag --list 'v*' --sort=-version:refname | head -1)
+            # リモートのタグ一覧から最新パッチをインクリメント
+            LATEST=$(git ls-remote --tags origin 'refs/tags/v*' \
+              | awk -F'/' '{print $3}' \
+              | grep -v '\^{}' \
+              | sort -V \
+              | tail -1)
             if [[ -z "$LATEST" ]]; then
               NEXT="v0.0.1"
             else
