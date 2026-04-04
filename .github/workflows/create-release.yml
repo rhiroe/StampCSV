@@ -1,0 +1,42 @@
+name: Create Release (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "リリースタグ (例: v1.0.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  create-tag:
+    name: Create Tag & Trigger Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate tag format
+        run: |
+          if [[ ! "${{ inputs.tag }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: タグは v1.2.3 の形式で入力してください"
+            exit 1
+          fi
+
+      - name: Check tag does not already exist
+        run: |
+          if git ls-remote --tags origin "${{ inputs.tag }}" | grep -q "${{ inputs.tag }}"; then
+            echo "Error: タグ ${{ inputs.tag }} は既に存在します"
+            exit 1
+          fi
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ inputs.tag }}"
+          git push origin "${{ inputs.tag }}"
+          echo "タグ ${{ inputs.tag }} を作成しました。Release ワークフローが自動的に開始されます。"
