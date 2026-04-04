@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "リリースタグ (例: v1.0.0)。空欄の場合は最新タグのパッチバージョンを自動インクリメント"
+        description: "バージョン番号 (例: 1.2.3 または v1.2.3)。空欄の場合は最新タグのパッチバージョンを自動インクリメント"
         required: false
         type: string
 
@@ -28,12 +28,13 @@ jobs:
         run: |
           INPUT="${{ inputs.tag }}"
           if [[ -n "$INPUT" ]]; then
-            # 入力ありの場合: v1.2.3 形式チェック
-            if [[ ! "$INPUT" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "Error: タグは v1.2.3 の形式で入力してください"
+            # 先頭の v を除去して正規化
+            NORMALIZED="${INPUT#v}"
+            if [[ ! "$NORMALIZED" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Error: バージョンは 1.2.3 の形式で入力してください"
               exit 1
             fi
-            echo "tag=$INPUT" >> "$GITHUB_OUTPUT"
+            echo "tag=v${NORMALIZED}" >> "$GITHUB_OUTPUT"
           else
             # 入力なしの場合: 最新タグのパッチバージョンをインクリメント
             LATEST=$(git tag --list 'v*' --sort=-version:refname | head -1)
