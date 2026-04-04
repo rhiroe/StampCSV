@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
+	"StampCSV/config"
 	stamper "StampCSV/csv"
 	slackbot "StampCSV/slack"
 )
@@ -21,12 +22,14 @@ func main() {
 	w.Resize(fyne.NewSize(420, 240))
 
 	// csvDir はUIとSlack Botで共有するポインタ
-	csvDir := ""
+	csvDir := config.LoadDir()
 
 	dirEntry := widget.NewEntry()
 	dirEntry.SetPlaceHolder("CSVを保存するディレクトリを選択してください")
+	dirEntry.SetText(csvDir)
 	dirEntry.OnChanged = func(s string) {
 		csvDir = s
+		_ = config.SaveDir(s)
 	}
 
 	browseBtn := widget.NewButtonWithIcon("選択", theme.FolderOpenIcon(), func() {
@@ -36,6 +39,7 @@ func main() {
 			}
 			dirEntry.SetText(uri.Path())
 			csvDir = uri.Path()
+			_ = config.SaveDir(csvDir)
 		}, w)
 	})
 
