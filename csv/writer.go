@@ -36,17 +36,24 @@ func stamp(dir string, stampType string, now time.Time) error {
 		return fmt.Errorf("CSV読み込みエラー: %w", err)
 	}
 
-	timeStr := fmt.Sprintf("%d:%02d", now.Hour(), now.Minute())
 	day := now.Day()
 
-	// 日付をまたぐ場合（0:00〜0:29 を「またぎ」と判定）
-	if now.Hour() == 0 {
-		prevDay := day - 1
-		if prevDay >= 1 {
-			rows = fillMidnight(rows, prevDay, timeStr)
+	// OUT かつ前日に未終了の区間がある場合は日付またぎとみなし
+	// 終了時刻を 24+時 形式で前日行に記録する
+	if stampType == "out" && day > 1 {
+		prevIdx := dayRowIndex(rows, day-1)
+		if prevIdx >= 0 && hasPendingSession(rows[prevIdx]) {
+			overTimeStr := fmt.Sprintf("%d:%02d", now.Hour()+24, now.Minute())
+			rows, err = writeStamp(rows, day-1, "out", overTimeStr)
+			if err != nil {
+				return err
+			}
+			rows = recalcSummary(rows)
+			return writeCSV(filePath, rows)
 		}
 	}
 
+	timeStr := fmt.Sprintf("%d:%02d", now.Hour(), now.Minute())
 	rows, err = writeStamp(rows, day, stampType, timeStr)
 	if err != nil {
 		return err
@@ -106,23 +113,19 @@ func makeFixedRow(label string) []string {
 	return row
 }
 
-// fillMidnight は日付またぎ時に前日行の終了に "23:59" を書く。
-func fillMidnight(rows [][]string, prevDay int, currentTimeStr string) [][]string {
-	idx := dayRowIndex(rows, prevDay)
-	if idx < 0 {
-		return rows
-	}
-	// 前日の最後の開始セルの次（終了セル）が空なら 23:59 を埋める
+// hasPendingSession は行に開始済み・未終了の区間があるかを返す。
+func hasPendingSession(row []string) bool {
 	for p := 0; p < numPairs; p++ {
 		startCol := colFirst + p*2
 		endCol := startCol + 1
-		ensureCols(&rows[idx], endCol+1)
-		if rows[idx][startCol] != "" && rows[idx][endCol] == "" {
-			rows[idx][endCol] = "23:59"
+		if startCol >= len(row) || endCol >= len(row) {
 			break
 		}
+		if row[startCol] != "" && row[endCol] == "" {
+			return true
+		}
 	}
-	return rows
+	return false
 }
 
 // writeStamp は対象日行に stampType（"in"/"out"）を書き込む。
