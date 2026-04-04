@@ -73,12 +73,14 @@ func readOrInit(filePath string, now time.Time) ([][]string, error) {
 	return r.ReadAll()
 }
 
-// initRows は月の初期行（1〜lastDay日 + 集計行）を生成する。
+// initRows は月の初期行（ヘッダー + 1〜lastDay日 + 集計行）を生成する。
 func initRows(now time.Time) [][]string {
 	year, month, _ := now.Date()
 	lastDay := time.Date(year, month+1, 0, 0, 0, 0, 0, time.Local).Day()
 
-	rows := make([][]string, 0, lastDay+3)
+	header := []string{"日", "時間", "開始", "終了", "開始", "終了", "開始", "終了", "開始", "終了", "開始", "終了", "休憩等", ""}
+	rows := make([][]string, 0, lastDay+4)
+	rows = append(rows, header)
 	for d := 1; d <= lastDay; d++ {
 		row := makeEmptyRow(d)
 		rows = append(rows, row)
