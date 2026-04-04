@@ -1,4 +1,4 @@
-name: Create Release (Manual)
+name: Release
 
 on:
   workflow_dispatch:
@@ -13,8 +13,10 @@ permissions:
 
 jobs:
   create-tag:
-    name: Create Tag & Trigger Release
+    name: Create Tag
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,9 +36,84 @@ jobs:
           fi
 
       - name: Create and push tag
+        id: tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "${{ inputs.tag }}"
           git push origin "${{ inputs.tag }}"
-          echo "タグ ${{ inputs.tag }} を作成しました。Release ワークフローが自動的に開始されます。"
+          echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build (${{ matrix.os }})
+    needs: create-tag
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: StampCSV-linux-amd64
+          - os: windows-latest
+            artifact: StampCSV-windows-amd64.exe
+          - os: macos-latest
+            artifact: StampCSV-darwin-amd64
+          - os: macos-latest
+            artifact: StampCSV-darwin-arm64
+            goarch: arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev xorg-dev
+
+      - name: Build (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: go build -o ${{ matrix.artifact }} .
+
+      - name: Build (Windows)
+        if: matrix.os == 'windows-latest'
+        run: go build -ldflags "-H windowsgui" -o ${{ matrix.artifact }} .
+
+      - name: Build (macOS amd64)
+        if: matrix.os == 'macos-latest' && matrix.goarch == ''
+        run: go build -o ${{ matrix.artifact }} .
+
+      - name: Build (macOS arm64)
+        if: matrix.os == 'macos-latest' && matrix.goarch == 'arm64'
+        env:
+          GOARCH: arm64
+        run: go build -o ${{ matrix.artifact }} .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          files: artifacts/*
+          generate_release_notes: true
