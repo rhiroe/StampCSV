@@ -3,6 +3,12 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2.5.7": {
+      "configureZshAsDefaultShell": true,
+      "username": "vscode"
+    }
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -20,5 +26,5 @@
   "containerEnv": {
     "DISPLAY": "${localEnv:DISPLAY}"
   },
-  "remoteUser": "root"
+  "remoteUser": "vscode"
 }
