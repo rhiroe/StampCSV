@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	"fyne.io/fyne/v2"
@@ -13,7 +12,6 @@ import (
 
 	"StampCSV/config"
 	stamper "StampCSV/csv"
-	slackbot "StampCSV/slack"
 )
 
 func main() {
@@ -21,7 +19,6 @@ func main() {
 	w := a.NewWindow("StampCSV")
 	w.Resize(fyne.NewSize(420, 240))
 
-	// csvDir はUIとSlack Botで共有するポインタ
 	csvDir := config.LoadDir()
 
 	dirEntry := widget.NewEntry()
@@ -71,21 +68,6 @@ func main() {
 	inBtn.Importance = widget.HighImportance
 	outBtn.Importance = widget.MediumImportance
 
-	slackStatus := widget.NewLabel("")
-
-	// Slack Bot は環境変数が揃っている場合のみ起動
-	if os.Getenv("SLACK_APP_TOKEN") != "" && os.Getenv("SLACK_BOT_TOKEN") != "" {
-		_, err := slackbot.NewBot(&csvDir)
-		if err != nil {
-			log.Printf("Slack Bot 起動失敗: %v", err)
-			slackStatus.SetText("Slack: 起動失敗 - " + err.Error())
-		} else {
-			slackStatus.SetText("Slack: 接続済み")
-		}
-	} else {
-		slackStatus.SetText("Slack: 未設定（SLACK_APP_TOKEN / SLACK_BOT_TOKEN）")
-	}
-
 	dirRow := container.NewBorder(nil, nil, nil, browseBtn, dirEntry)
 	btnRow := container.NewGridWithColumns(2, inBtn, outBtn)
 	content := container.NewVBox(
@@ -93,7 +75,6 @@ func main() {
 		dirRow,
 		btnRow,
 		statusLabel,
-		slackStatus,
 	)
 
 	w.SetContent(content)
