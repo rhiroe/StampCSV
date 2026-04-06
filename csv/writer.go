@@ -142,10 +142,9 @@ func writeStamp(rows [][]string, day int, stampType, timeStr string) ([][]string
 		// 次の空き「開始」列に書く
 		for p := 0; p < numPairs; p++ {
 			startCol := colFirst + p*2
-			endCol := startCol + 1
 			if rows[idx][startCol] == "" {
 				// 直前のペアが終了済みか確認（p>0 の場合）
-				if p > 0 && rows[idx][endCol-1] == "" {
+				if p > 0 && rows[idx][startCol-1] == "" {
 					return rows, fmt.Errorf("前の区間が終了していません")
 				}
 				rows[idx][startCol] = timeStr
